@@ -1,0 +1,55 @@
+# Lightsail 내부 테스트 배포용: docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+# 외부에는 80 포트(nginx, Basic 인증)만 열린다. DB·백엔드는 내부 네트워크 전용이다.
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?}
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_HOST: postgres
+      DB_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DEV_OPERATOR_USERNAME: ${DEV_OPERATOR_USERNAME:?}
+      DEV_OPERATOR_PASSWORD: ${DEV_OPERATOR_PASSWORD:?}
+      IMAGE_STORAGE_DIR: /data/images
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - imagedata:/data/images
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    environment:
+      DEV_OPERATOR_USERNAME: ${DEV_OPERATOR_USERNAME}
+      DEV_OPERATOR_PASSWORD: ${DEV_OPERATOR_PASSWORD}
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    volumes:
+      - ./deploy/.htpasswd:/etc/nginx/.htpasswd:ro
+
+volumes:
+  pgdata:
+  imagedata:

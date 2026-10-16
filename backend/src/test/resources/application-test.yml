@@ -1,0 +1,4 @@
+spring:
+  flyway:
+    # 운영 마이그레이션과 테스트 전용 마이그레이션(과거 주문 정보 보존 검증용 테이블)을 함께 적용한다.
+    locations: classpath:db/migration,classpath:db/test-migration

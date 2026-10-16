@@ -1,0 +1,72 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.5.16'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'com.diffplug.spotless' version '8.10.3'
+    id 'checkstyle'
+}
+
+group = 'com.example'
+version = '0.0.1'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-api:2.9.1'
+    implementation 'net.logstash.logback:logstash-logback-encoder:8.1'
+    runtimeOnly 'org.postgresql:postgresql'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:postgresql'
+    testImplementation 'com.atlassian.oai:swagger-request-validator-mockmvc:2.46.1'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs << '-parameters'
+}
+
+tasks.named('test') {
+    useJUnitPlatform {
+        // Docker가 없는 로컬 환경 전용: `./gradlew test -PwithoutDocker`는 Testcontainers 기반 통합 테스트를 제외한다.
+        // CI와 병합 게이트에서는 이 옵션을 쓰지 않는다.
+        if (project.hasProperty('withoutDocker')) {
+            excludeTags 'integration'
+        }
+    }
+    // 계약 테스트가 저장소 루트의 명세 디렉터리를 읽는다.
+    systemProperty 'contract.file',
+        rootProject.projectDir.parentFile.toPath()
+            .resolve('specs/001-product-management/contracts/product-api.openapi.yaml').toString()
+}
+
+spotless {
+    java {
+        target 'src/**/*.java'
+        googleJavaFormat('1.36.1')
+        removeUnusedImports()
+    }
+}
+
+checkstyle {
+    toolVersion = '14.3.0'
+    configFile = file('config/checkstyle/checkstyle.xml')
+    maxWarnings = 0
+}

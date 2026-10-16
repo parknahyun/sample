@@ -1,0 +1,13 @@
+# 내부 테스트 배포용. 개발용 계정을 번들에 넣지 않고, nginx가 사이트 Basic 인증과 백엔드 인증 헤더 주입을 맡는다.
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY . .
+RUN npm run build
+
+FROM nginx:1.27-alpine
+COPY deploy/10-backend-auth.envsh /docker-entrypoint.d/10-backend-auth.envsh
+COPY deploy/nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY --from=build /app/dist /usr/share/nginx/html
+EXPOSE 80

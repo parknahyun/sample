@@ -1,0 +1,4 @@
+spring:
+  flyway:
+    # 개발 프로필 전용 샘플 카테고리 시드를 함께 적용한다.
+    locations: classpath:db/migration,classpath:db/dev

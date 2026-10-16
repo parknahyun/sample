@@ -1,0 +1,40 @@
+spring:
+  application:
+    name: commerce-backend
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${POSTGRES_DB:commerce}
+    username: ${POSTGRES_USER:}
+    password: ${POSTGRES_PASSWORD:}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      # 목록에서 옵션·이미지를 조회할 때 N+1 쿼리를 줄인다.
+      hibernate.default_batch_fetch_size: 50
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      # 이미지는 장당 5MB 이하(FR-002). 초과하면 413으로 응답한다.
+      max-file-size: 5MB
+      max-request-size: 6MB
+
+app:
+  image:
+    storage-dir: ${IMAGE_STORAGE_DIR:./data/images}
+  security:
+    # 개발·테스트 프로필에서만 쓰는 인메모리 운영자 계정. 값은 환경 변수로만 주입한다.
+    dev-operator:
+      username: ${DEV_OPERATOR_USERNAME:}
+      password: ${DEV_OPERATOR_PASSWORD:}
+
+server:
+  error:
+    include-message: never
+    include-stacktrace: never
+
+springdoc:
+  swagger-ui:
+    enabled: false

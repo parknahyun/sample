@@ -1,0 +1,55 @@
+# 기본(프로필 없음): postgres만 실행한다. 백엔드·프런트엔드는 로컬에서 실행한다.
+# 전체 실행: docker compose --profile full up --build
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB를 .env에 설정하세요}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER를 .env에 설정하세요}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD를 .env에 설정하세요}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    profiles: ["full"]
+    build: ./backend
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_HOST: postgres
+      DB_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      DEV_OPERATOR_USERNAME: ${DEV_OPERATOR_USERNAME:?DEV_OPERATOR_USERNAME을 .env에 설정하세요}
+      DEV_OPERATOR_PASSWORD: ${DEV_OPERATOR_PASSWORD:?DEV_OPERATOR_PASSWORD를 .env에 설정하세요}
+      IMAGE_STORAGE_DIR: /data/images
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "${BACKEND_PORT:-8080}:8080"
+    volumes:
+      - imagedata:/data/images
+
+  frontend:
+    profiles: ["full"]
+    build:
+      context: ./frontend
+      args:
+        VITE_DEV_USERNAME: ${DEV_OPERATOR_USERNAME}
+        VITE_DEV_PASSWORD: ${DEV_OPERATOR_PASSWORD}
+    depends_on:
+      - backend
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+
+volumes:
+  pgdata:
+  imagedata:
